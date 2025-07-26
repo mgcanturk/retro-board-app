@@ -1,44 +1,25 @@
-# Railway için optimize edilmiş Dockerfile
-FROM node:18-slim
-
-# Çalışma dizinini ayarla
+# 1. Frontend build aşaması
+FROM node:18-slim AS frontend-build
 WORKDIR /app
-
-# Package.json dosyalarını kopyala
-COPY frontend/package*.json ./frontend/
-COPY backend/package*.json ./backend/
-
-# Frontend build
+COPY frontend ./frontend
 WORKDIR /app/frontend
-RUN npm ci --only=production
-COPY frontend/ ./
 ARG REACT_APP_API_URL
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
-RUN npm run build
+RUN npm ci && npm run build
 
-# Backend setup
-WORKDIR /app/backend
-RUN npm ci --only=production
-COPY backend/ ./
-
-# Frontend build'i backend public klasörüne kopyala
-COPY --from=0 /app/frontend/build ./public
-
-# Environment variables
-ENV NODE_ENV=production
-ENV PORT=5000
-
-# Railway için gerekli environment variables
-ARG DATABASE_URL
-ENV DATABASE_URL=$DATABASE_URL
+# 2. Backend build aşaması
+FROM node:18-slim AS backend-build
+WORKDIR /app
+COPY backend ./backend
 ARG FRONTEND_URL
 ENV FRONTEND_URL=$FRONTEND_URL
+COPY --from=frontend-build /app/frontend/build ./backend/public
+WORKDIR /app/backend
+RUN npm ci
 
-# Port exposure
-EXPOSE 5000
-
-# Health check için curl ekle
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-
-# Uygulamayı başlat
+# 3. Final image
+FROM node:18-slim
+WORKDIR /app/backend
+COPY --from=backend-build /app/backend .
+ENV NODE_ENV=production
 CMD ["node", "server.js"] 
