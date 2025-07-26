@@ -25,7 +25,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import Modal from './common/Modal';
 import FormInput from './common/FormInput';
 import Button from './common/Button';
-import { API_BASE_URL, MAX_COMMENT_LENGTH, TIMER_DURATIONS, SORT_ORDERS } from '../utils/constants';
+import { API_BASE_URL, MAX_COMMENT_LENGTH } from '../utils/constants';
 import { formatTime, copyToClipboard, getSortOrderLabel } from '../utils/helpers';
 
 const Board = () => {
@@ -49,7 +49,7 @@ const Board = () => {
   const [showNames, setShowNames] = useState(false);
   const [isLocked, setIsLocked] = useState(true);
   const [participantCount, setParticipantCount] = useState(0);
-  const [error, setError] = useState('');
+  const [error] = useState('');
 
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
   const [showParticipants, setShowParticipants] = useState(false);
@@ -262,6 +262,10 @@ const Board = () => {
       setJoinStatus('error');
       setShowJoinModal(true);
       setJoinError(err?.message || 'Bir hata oluştu.');
+      // Eğer nickname hatası varsa anasayfaya yönlendirirken boardId'yi de gönder
+      if (err?.message && err.message.toLowerCase().includes('nickname')) {
+        navigate('/', { state: { joinError: err.message, boardId } });
+      }
     });
 
     socketRef.current.on('boardEnded', () => {
