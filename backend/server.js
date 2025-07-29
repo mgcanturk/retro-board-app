@@ -204,6 +204,12 @@ io.on('connection', (socket) => {
         return;
       }
 
+      // Admin kullanıcısı kendi nickname'ini değiştiremez
+      if (user.isAdmin) {
+        socket.emit('nicknameChangeError', { message: 'Admin kullanıcısı kendi nickname\'ini değiştiremez' });
+        return;
+      }
+
       // Nickname boş olamaz
       if (!newNickname || newNickname.trim() === '') {
         socket.emit('nicknameChangeError', { message: 'Nickname boş olamaz' });

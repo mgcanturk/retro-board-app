@@ -675,15 +675,24 @@ const Board = () => {
                 )}
               </div>
 
-              {/* Nickname Change Button */}
-              <button
-                onClick={openNicknameModal}
-                className="flex items-center px-2 py-1 rounded-md text-xs transition-all duration-200 bg-blue-100 text-blue-700 hover:bg-blue-200"
-                title="Nickname değiştir"
-              >
-                <Edit3 className="w-4 h-4 mr-1" />
-                {currentNickname}
-              </button>
+              {/* Nickname Change Button - Admin değilse göster */}
+              {!isAdmin && (
+                <button
+                  onClick={openNicknameModal}
+                  className="flex items-center px-2 py-1 rounded-md text-xs transition-all duration-200 bg-blue-100 text-blue-700 hover:bg-blue-200"
+                  title="Nickname değiştir"
+                >
+                  <Edit3 className="w-4 h-4 mr-1" />
+                  {currentNickname}
+                </button>
+              )}
+
+              {/* Admin kullanıcısı için sadece nickname göster */}
+              {isAdmin && (
+                <div className="flex items-center px-2 py-1 rounded-md text-xs bg-gray-100 text-gray-700">
+                  {currentNickname}
+                </div>
+              )}
 
               {/* Timer Display - All Users */}
               {isTimerActive && timeLeft !== null && (
