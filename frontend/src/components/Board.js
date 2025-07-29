@@ -67,6 +67,11 @@ const Board = () => {
   const [nicknameError, setNicknameError] = useState('');
   const [commentSortOrder, setCommentSortOrder] = useState('chronological');
   const [showSortModal, setShowSortModal] = useState(false);
+  
+  // End Board Modal states
+  const [showEndBoardModal, setShowEndBoardModal] = useState(false);
+  const [downloadDataBeforeEnd, setDownloadDataBeforeEnd] = useState(false);
+  const [isEndingBoard, setIsEndingBoard] = useState(false);
 
 
   useEffect(() => {
@@ -477,9 +482,14 @@ const Board = () => {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+        toast.success('Veriler başarıyla indirildi!');
+      } else {
+        throw new Error('Export failed');
       }
     } catch (error) {
-      alert('Dışa aktarma sırasında hata oluştu.');
+      console.error('Export error:', error);
+      toast.error('Dışa aktarma sırasında hata oluştu.');
+      throw error; // Re-throw to handle in calling function
     }
   };
 
@@ -547,8 +557,31 @@ const Board = () => {
   }, [isAdmin]);
 
   const endBoard = () => {
-    if (window.confirm('Boardı sonlandırmak istediğinize emin misiniz? Bu işlem geri alınamaz!')) {
+    setShowEndBoardModal(true);
+  };
+
+  const handleEndBoard = async () => {
+    setIsEndingBoard(true);
+    
+    try {
+      // Eğer verileri indir seçeneği işaretliyse, önce verileri indir
+      if (downloadDataBeforeEnd) {
+        await exportBoard();
+        // İndirme tamamlanana kadar biraz bekle
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // Board'ı sonlandır
       socketRef.current.emit('endBoard', { boardId });
+      
+      // Modal'ı kapat
+      setShowEndBoardModal(false);
+      setDownloadDataBeforeEnd(false);
+    } catch (error) {
+      console.error('Board sonlandırma hatası:', error);
+      toast.error('Board sonlandırılırken bir hata oluştu.');
+    } finally {
+      setIsEndingBoard(false);
     }
   };
 
@@ -1144,6 +1177,67 @@ const Board = () => {
           </div>
         </div>
       )}
+
+      {/* End Board Modal */}
+      <Modal 
+        isOpen={showEndBoardModal} 
+        onClose={() => {
+          setShowEndBoardModal(false);
+          setDownloadDataBeforeEnd(false);
+        }}
+        title="Board'u Sonlandır"
+      >
+        <div className="space-y-4">
+          <div className="text-gray-600">
+            <p className="mb-4">
+              Board'u sonlandırmak istediğinize emin misiniz? Bu işlem geri alınamaz ve tüm veriler silinecektir.
+            </p>
+            
+            <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="downloadData"
+                checked={downloadDataBeforeEnd}
+                onChange={(e) => setDownloadDataBeforeEnd(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="downloadData" className="text-sm text-gray-700 cursor-pointer">
+                Sonlandırmadan önce verileri indir
+              </label>
+            </div>
+            
+            {downloadDataBeforeEnd && (
+              <p className="text-xs text-gray-500 mt-2 ml-6">
+                Veriler .TXT formatında indirilecek ve ardından board sonlandırılacaktır.
+              </p>
+            )}
+          </div>
+          
+          <div className="flex gap-3 pt-4">
+            <Button 
+              onClick={handleEndBoard}
+              disabled={isEndingBoard}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              size="small"
+            >
+              {isEndingBoard ? 'İşleniyor...' : 'Sonlandır'}
+            </Button>
+            <Button 
+              type="button" 
+              variant="secondary" 
+              onClick={() => {
+                setShowEndBoardModal(false);
+                setDownloadDataBeforeEnd(false);
+              }}
+              disabled={isEndingBoard}
+              className="flex-1" 
+              size="small"
+            >
+              İptal
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <ToastContainer position="bottom-right" autoClose={3000} transition={Slide} />
     </div>
