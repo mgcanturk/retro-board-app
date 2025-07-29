@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { Plus, Trash2, Save } from 'lucide-react';
 import FormInput from './common/FormInput';
 import Button from './common/Button';
@@ -51,11 +52,11 @@ const CreateBoard = () => {
     e.preventDefault();
     
     if (!adminNickname || !boardData.name) {
-      alert('Lütfen admin nickname ve board adını doldurun.');
+      toast.error('Lütfen admin nickname ve board adını doldurun.');
       return;
     }
     if (!createKey) {
-      alert('Board oluşturma anahtarı gereklidir.');
+      toast.error('Board oluşturma anahtarı gereklidir.');
       return;
     }
 
@@ -74,16 +75,17 @@ const CreateBoard = () => {
 
       if (response.ok) {
         const result = await response.json();
+        toast.success('Board başarıyla oluşturuldu!');
         navigate(`/board/${result.boardId}`, {
           state: { nickname: adminNickname, isAdmin: true, inviteCode: result.inviteCode }
         });
       } else {
         const err = await response.json();
-        alert(err.error || 'Board oluşturulurken bir hata oluştu.');
+        toast.error(err.error || 'Board oluşturulurken bir hata oluştu.');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Board oluşturulurken bir hata oluştu.');
+      toast.error('Board oluşturulurken bir hata oluştu.');
     }
   };
 

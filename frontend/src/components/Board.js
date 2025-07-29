@@ -73,6 +73,10 @@ const Board = () => {
   const [downloadDataBeforeEnd, setDownloadDataBeforeEnd] = useState(false);
   const [isEndingBoard, setIsEndingBoard] = useState(false);
 
+  // Remove User Modal states
+  const [showRemoveUserModal, setShowRemoveUserModal] = useState(false);
+  const [userToRemove, setUserToRemove] = useState('');
+
 
   useEffect(() => {
     if (!currentNickname || !inviteCode) {
@@ -586,8 +590,16 @@ const Board = () => {
   };
 
   const removeUser = (targetNickname) => {
-    if (window.confirm(`${targetNickname} kullanıcısını board'dan atmak istediğinizden emin misiniz? Bu işlem geri alınamaz.`)) {
-      socketRef.current.emit('removeUser', { boardId, targetNickname });
+    setUserToRemove(targetNickname);
+    setShowRemoveUserModal(true);
+  };
+
+  const handleRemoveUser = () => {
+    if (userToRemove) {
+      socketRef.current.emit('removeUser', { boardId, targetNickname: userToRemove });
+      setShowRemoveUserModal(false);
+      setUserToRemove('');
+      toast.info(`${userToRemove} board'dan atıldı.`);
     }
   };
 
@@ -1230,6 +1242,47 @@ const Board = () => {
                 setDownloadDataBeforeEnd(false);
               }}
               disabled={isEndingBoard}
+              className="flex-1" 
+              size="small"
+            >
+              İptal
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Remove User Modal */}
+      <Modal 
+        isOpen={showRemoveUserModal} 
+        onClose={() => {
+          setShowRemoveUserModal(false);
+          setUserToRemove('');
+        }}
+        title="Kullanıcıyı At"
+      >
+        <div className="space-y-4">
+          <div className="text-gray-600">
+            <p className="mb-4">
+              <strong>{userToRemove}</strong> kullanıcısını board'dan atmak istediğinizden emin misiniz? 
+              Bu işlem geri alınamaz ve kullanıcının tüm yorumları silinecektir.
+            </p>
+          </div>
+          
+          <div className="flex gap-3 pt-4">
+            <Button 
+              onClick={handleRemoveUser}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              size="small"
+            >
+              Kullanıcıyı At
+            </Button>
+            <Button 
+              type="button" 
+              variant="secondary" 
+              onClick={() => {
+                setShowRemoveUserModal(false);
+                setUserToRemove('');
+              }}
               className="flex-1" 
               size="small"
             >

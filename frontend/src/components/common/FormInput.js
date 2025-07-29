@@ -1,13 +1,13 @@
 import React from 'react';
 import { inputStyles } from '../../utils/styles';
 
-const FormInput = ({ 
+const FormInput = React.forwardRef(({ 
   label, 
   required = false, 
   error, 
   className = "", 
   ...props 
-}) => {
+}, ref) => {
   return (
     <div className="mb-4">
       {label && (
@@ -16,12 +16,15 @@ const FormInput = ({
         </label>
       )}
       <input
+        ref={ref}
         className={`${inputStyles} ${className}`}
         {...props}
       />
       {error && <div className="text-red-500 text-sm mt-1">{error}</div>}
     </div>
   );
-};
+});
+
+FormInput.displayName = 'FormInput';
 
 export default FormInput; 
