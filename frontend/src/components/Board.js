@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
+import Masonry from 'react-masonry-css';
 import { 
   Lock, 
   Unlock, 
@@ -868,52 +869,63 @@ const Board = () => {
               </div>
 
               {/* Comments */}
-              <div className="space-y-3 mb-4 max-h-96 overflow-y-auto grid grid-cols-2 gap-3">
-                {column.comments && column.comments.map((comment, idx) => (
-                  <div key={comment.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 relative border border-gray-200 dark:border-gray-600">
-                    {(comment.author === currentNickname || isAdmin) && !isLocked && (
-                      <button
-                        className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                        title="Yorumu Sil"
-                        onClick={() => handleDeleteComment(column.id, comment.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                    <p className="text-gray-800 dark:text-gray-100 text-sm mb-2">
-                      {isLocked ? comment.text : (comment.author === currentNickname ? comment.text : '*****')}
-                    </p>
-                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                      <span>
-                        {showNames
-                          ? comment.author
-                          : (comment.author === currentNickname ? comment.author : '***')}
-                      </span>
-                      <span>
-                        {new Date(comment.timestamp).toLocaleTimeString('tr-TR', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
+              <div className="mb-4 max-h-96 overflow-y-auto">
+                <Masonry
+                  breakpointCols={{
+                    default: 2,
+                    1024: 2,
+                    768: 2,
+                    640: 1
+                  }}
+                  className="masonry-grid"
+                  columnClassName="masonry-grid_column"
+                >
+                  {column.comments && column.comments.map((comment, idx) => (
+                    <div key={comment.id} className="masonry-comment-card bg-gray-50 dark:bg-gray-800 rounded-lg p-3 relative border border-gray-200 dark:border-gray-600 mb-3 break-inside-avoid">
+                      {(comment.author === currentNickname || isAdmin) && !isLocked && (
+                        <button
+                          className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                          title="Yorumu Sil"
+                          onClick={() => handleDeleteComment(column.id, comment.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      <p className="text-gray-800 dark:text-gray-100 text-sm mb-2">
+                        {isLocked ? comment.text : (comment.author === currentNickname ? comment.text : '*****')}
+                      </p>
+                      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                        <span>
+                          {showNames
+                            ? comment.author
+                            : (comment.author === currentNickname ? comment.author : '***')}
+                        </span>
+                        <span>
+                          {new Date(comment.timestamp).toLocaleTimeString('tr-TR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <button
+                          className={`flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-blue-100 ${comment.likes?.includes(currentNickname) ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'} ${!isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          onClick={() => isLocked && handleLike(column.id, comment.id)}
+                          disabled={!isLocked}
+                        >
+                          <ThumbsUp className="w-4 h-4" /> {comment.likes?.length || 0}
+                        </button>
+                        <button
+                          className={`flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-red-100 ${comment.dislikes?.includes(currentNickname) ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600'} ${!isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          onClick={() => isLocked && handleDislike(column.id, comment.id)}
+                          disabled={!isLocked}
+                        >
+                          <ThumbsDown className="w-4 h-4" /> {comment.dislikes?.length || 0}
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <button
-                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-blue-100 ${comment.likes?.includes(currentNickname) ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'} ${!isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        onClick={() => isLocked && handleLike(column.id, comment.id)}
-                        disabled={!isLocked}
-                      >
-                        <ThumbsUp className="w-4 h-4" /> {comment.likes?.length || 0}
-                      </button>
-                      <button
-                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-red-100 ${comment.dislikes?.includes(currentNickname) ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600'} ${!isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        onClick={() => isLocked && handleDislike(column.id, comment.id)}
-                        disabled={!isLocked}
-                      >
-                        <ThumbsDown className="w-4 h-4" /> {comment.dislikes?.length || 0}
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </Masonry>
               </div>
 
               {/* Add Comment */}

@@ -56,4 +56,36 @@ input, textarea {
 .bg-yellow-100 { background-color: #ff6a39 !important; }
 .dark .bg-yellow-100 { background-color: #ff6a39 !important; }
 .bg-yellow-50 { background-color: #ff6a39 !important; }
-.dark .bg-yellow-50 { background-color: #ff6a39 !important; } 
+.dark .bg-yellow-50 { background-color: #ff6a39 !important; }
+
+/* Masonry Layout Styles */
+.masonry-grid {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  margin-left: -12px; /* gutter size offset */
+  width: auto;
+}
+
+.masonry-grid_column {
+  padding-left: 12px; /* gutter size */
+  background-clip: padding-box;
+}
+
+/* Style your items */
+.masonry-grid_column > div {
+  margin-bottom: 12px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Ensure text wrapping for different card heights */
+.masonry-comment-card {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.masonry-comment-card p {
+  line-height: 1.4;
+} 
