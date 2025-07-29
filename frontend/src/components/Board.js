@@ -51,6 +51,12 @@ const Board = () => {
   const [isLocked, setIsLocked] = useState(true);
   const [participantCount, setParticipantCount] = useState(0);
   const [error] = useState('');
+  
+  // Timer warning states
+  const [warned30, setWarned30] = useState(false);
+  const [warned10, setWarned10] = useState(false);
+  const [showTimeWarning, setShowTimeWarning] = useState(false);
+  const [warningMessage, setWarningMessage] = useState('');
 
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
   const [showParticipants, setShowParticipants] = useState(false);
@@ -188,10 +194,18 @@ const Board = () => {
         setIsTimerActive(true);
         const remaining = Math.max(0, Math.floor((boardState.timer.endTime - Date.now()) / 1000));
         setTimeLeft(remaining);
+        // Reset warning states when syncing timer
+        setWarned30(false);
+        setWarned10(false);
+        setShowTimeWarning(false);
       } else {
         setIsTimerActive(false);
         setTimeLeft(null);
         clearInterval(intervalRef.current);
+        // Reset warning states when timer is inactive
+        setWarned30(false);
+        setWarned10(false);
+        setShowTimeWarning(false);
       }
       setJoinStatus('success');
     });
@@ -232,6 +246,10 @@ const Board = () => {
       const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
       setTimeLeft(remaining);
       setIsLocked(false);
+      // Reset warning states
+      setWarned30(false);
+      setWarned10(false);
+      setShowTimeWarning(false);
       toast.info('Süre başladı!');
     });
 
@@ -240,6 +258,10 @@ const Board = () => {
       setTimeLeft(null);
       setIsLocked(true);
       clearInterval(intervalRef.current);
+      // Reset warning states
+      setWarned30(false);
+      setWarned10(false);
+      setShowTimeWarning(false);
       toast.info('Süre bitti, board kilitlendi.');
     });
 
@@ -248,6 +270,10 @@ const Board = () => {
       setTimeLeft(null);
       setIsLocked(true);
       clearInterval(intervalRef.current);
+      // Reset warning states
+      setWarned30(false);
+      setWarned10(false);
+      setShowTimeWarning(false);
       toast.info('Süre durduruldu, board kilitlendi.');
     });
 
@@ -383,6 +409,11 @@ const Board = () => {
   };
 
   const startTimer = () => {
+    // Reset warning states when starting timer
+    setWarned30(false);
+    setWarned10(false);
+    setShowTimeWarning(false);
+    
     socketRef.current.emit('startTimer', {
       boardId,
       duration: timerDuration
@@ -457,8 +488,26 @@ const Board = () => {
     if (isTimerActive && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
         setTimeLeft(prev => {
+          // Show warning at 30 seconds
+          if (prev === 30 && !warned30) {
+            setWarned30(true);
+            setWarningMessage('⏰ Süre bitimine 30 saniye kaldı!');
+            setShowTimeWarning(true);
+            setTimeout(() => setShowTimeWarning(false), 3000);
+          }
+          
+          // Show warning at 10 seconds
+          if (prev === 10 && !warned10) {
+            setWarned10(true);
+            setWarningMessage('🚨 Süre bitimine 10 saniye kaldı!');
+            setShowTimeWarning(true);
+            setTimeout(() => setShowTimeWarning(false), 3000);
+          }
+          
           if (prev <= 1) {
             setIsTimerActive(false);
+            setWarned30(false);
+            setWarned10(false);
             return 0;
           }
           return prev - 1;
@@ -466,7 +515,7 @@ const Board = () => {
       }, 1000);
     }
     return () => clearInterval(intervalRef.current);
-  }, [isTimerActive, timeLeft]);
+  }, [isTimerActive, timeLeft, warned30, warned10]);
 
 
 
@@ -629,6 +678,17 @@ const Board = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Timer Warning Overlay */}
+      {showTimeWarning && (
+        <div className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-4">
+          <div className="bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg border-2 border-red-600 animate-pulse">
+            <div className="flex items-center space-x-2">
+              <span className="text-lg font-bold">{warningMessage}</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -899,12 +959,6 @@ const Board = () => {
                           {showNames
                             ? comment.author
                             : (comment.author === currentNickname ? comment.author : '***')}
-                        </span>
-                        <span>
-                          {new Date(comment.timestamp).toLocaleTimeString('tr-TR', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-2">
