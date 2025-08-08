@@ -28,7 +28,7 @@ Gerçek zamanlı, modern ve optimize edilmiş retrospektif board uygulaması. Ta
 - **Yorum Sıralama**: Kronolojik, ters kronolojik ve yazara göre sıralama
 
 ### ⏱️ Zamanlayıcı
-- **Süre Belirleme**: 1, 3, 5, 10, 15, 30 dakika seçenekleri
+- **Süre Belirleme**: 1, 5, 10, 15, 30 dakika seçenekleri
 - **Otomatik Kilitleme**: Süre bitiminde board otomatik kilitlenir
 - **Süre Durdurma**: Admin tarafından süreyi durdurma
 - **Gerçek Zamanlı Sayaç**: Tüm katılımcılar için senkronize sayaç
@@ -216,8 +216,14 @@ REACT_APP_API_URL=https://your-domain.railway.app
 - `commentDeleted` - Yorum silindi
 - `nicknameChanged` - Nickname değişti
 - `boardLocked` - Board kilitlendi/açıldı
-- `timerStarted` - Zamanlayıcı başladı
-- `timerEnded` - Zamanlayıcı bitti
+- `showNamesToggled` - İsimleri göster/gizle durumu değişti (admin işlemi)
+- `commentSortOrderChanged` - Yorum sıralaması değişti (admin işlemi)
+- `timerStarted` - Zamanlayıcı başladı (kilit otomatik açılır)
+- `timerEnded` - Zamanlayıcı bitti (kilit otomatik kapanır)
+- `timerStopped` - Zamanlayıcı durduruldu (kilit otomatik kapanır)
+- `participantCountUpdated` - Katılımcı sayısı güncellendi
+- `boardEnded` - Board sonlandırıldı
+- `kickedFromBoard` - Kullanıcı board'dan atıldı (yalnızca hedef kullanıcıya gönderilir)
 - `userLeft` - Kullanıcı ayrıldı
 - `userRemoved` - Kullanıcı atıldı
 - `error` - Hata mesajı
@@ -265,10 +271,9 @@ docker run -p 5000:5000 -e DATABASE_URL=your_db_url retro-board
 - CORS yapılandırması
 
 ### Performans
-- Lazy loading
-- Optimized queries
-- Memory cache
-- Connection pooling
+- Optimize edilmiş sorgular (yük azaltma ve alan daraltma)
+- Memory cache (20 dk TTL, otomatik invalidation)
+- Sequelize varsayılan connection pool kullanımı
 
 ### Kullanıcı Deneyimi
 - Gerçek zamanlı güncellemeler
