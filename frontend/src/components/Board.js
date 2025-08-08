@@ -146,6 +146,13 @@ const Board = () => {
       }
     }
 
+    return () => {
+      if (socketRef.current) {
+        try { socketRef.current.removeAllListeners(); } catch (_) {}
+        try { socketRef.current.disconnect(); } catch (_) {}
+        socketRef.current = null;
+      }
+    };
   }, [currentNickname, inviteCode]);
 
   const loadBoardData = async () => {
@@ -179,9 +186,10 @@ const Board = () => {
   };
 
   const initializeSocket = (userNickname, userIsAdmin, userInviteCode) => {
-    // Yeni bir bağlantı açmadan önce varsa eski bağlantıyı kapat
+    // Yeni bir bağlantı açmadan önce varsa eski bağlantının tüm dinleyicilerini kaldır ve kapat
     if (socketRef.current) {
-      socketRef.current.disconnect();
+      try { socketRef.current.removeAllListeners(); } catch (_) {}
+      try { socketRef.current.disconnect(); } catch (_) {}
     }
     socketRef.current = io(API_BASE_URL);
     socketRef.current.on('boardState', (boardState) => {
