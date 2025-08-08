@@ -6,7 +6,6 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
-const { Sequelize } = require('sequelize');
 const models = require('./models');
 const { Op } = require('sequelize');
 const path = require('path');
@@ -26,11 +25,6 @@ const io = socketIo(server, {
 
 const PORT = process.env.PORT || 5000;
 
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
-  dialect: 'postgres',
-  protocol: 'postgres',
-  logging: false,
-});
 
 // Middleware
 app.use(cors({ origin: FRONTEND_URL }));
@@ -88,8 +82,7 @@ io.on('connection', (socket) => {
         invalidateBoardCache(boardId);
       }
       // Board state'i yayınla
-      const participants = await models.User.findAll({ where: { boardId } });
-      const participantCount = participants.length;
+      const participantCount = await models.User.count({ where: { boardId } });
       io.to(boardId).emit('boardState', await getFullBoardState(boardId));
       io.to(boardId).emit('participantCountUpdated', { participantCount });
     } catch (err) {
@@ -104,9 +97,11 @@ io.on('connection', (socket) => {
       // Kullanıcıyı bul
       const user = await models.User.findOne({ where: { boardId, socketId: socket.id } });
       if (!user) return;
-      // Board ve column'u bul
-      const board = await models.Board.findByPk(boardId);
-      const column = await models.Column.findOne({ where: { id: columnId, boardId } });
+      // Board ve column'u paralel olarak getir
+      const [board, column] = await Promise.all([
+        models.Board.findByPk(boardId, { attributes: ['isLocked'] }),
+        models.Column.findOne({ where: { id: columnId, boardId }, attributes: ['id', 'adminOnly'] })
+      ]);
       if (!board || !column) return;
       // Sadece admin kolonuna admin ekleyebilir
       if (column.adminOnly && !user.isAdmin) {
@@ -242,26 +237,38 @@ io.on('connection', (socket) => {
         { where: { boardId, author: oldNickname } }
       );
 
-      // Like/dislike listelerindeki eski nickname'i güncelle
-      const comments = await models.Comment.findAll({ where: { boardId } });
+      // Like/dislike listelerindeki eski nickname'i güncelle (yalnızca gerekli kayıtlar)
+      const comments = await models.Comment.findAll({
+        where: {
+          boardId,
+          [Op.or]: [
+            { likes: { [Op.contains]: [oldNickname] } },
+            { dislikes: { [Op.contains]: [oldNickname] } }
+          ]
+        }
+      });
       for (const comment of comments) {
-        let likes = Array.isArray(comment.likes) ? comment.likes : [];
-        let dislikes = Array.isArray(comment.dislikes) ? comment.dislikes : [];
-        
+        const likes = Array.isArray(comment.likes) ? comment.likes : [];
+        const dislikes = Array.isArray(comment.dislikes) ? comment.dislikes : [];
+        let changed = false;
+
         const likeIndex = likes.indexOf(oldNickname);
-        const dislikeIndex = dislikes.indexOf(oldNickname);
-        
         if (likeIndex !== -1) {
           likes[likeIndex] = trimmedNickname;
+          changed = true;
         }
+        const dislikeIndex = dislikes.indexOf(oldNickname);
         if (dislikeIndex !== -1) {
           dislikes[dislikeIndex] = trimmedNickname;
+          changed = true;
         }
-        
-        await models.Comment.update(
-          { likes: [...likes], dislikes: [...dislikes] },
-          { where: { id: comment.id } }
-        );
+
+        if (changed) {
+          await models.Comment.update(
+            { likes: [...likes], dislikes: [...dislikes] },
+            { where: { id: comment.id } }
+          );
+        }
       }
 
       invalidateBoardCache(boardId);
@@ -533,15 +540,17 @@ app.post('/api/boards', async (req, res) => {
       isLocked: true,
       showNames: false,
     });
-    // Kolonları oluştur
-    for (let i = 0; i < columns.length; i++) {
-      await models.Column.create({
-        name: columns[i].name,
-        adminOnly: columns[i].adminOnly || false,
-        order: i,
-        boardId: boardId,
-      });
-    }
+    // Kolonları oluştur (paralel)
+    await Promise.all(
+      columns.map((col, i) =>
+        models.Column.create({
+          name: col.name,
+          adminOnly: col.adminOnly || false,
+          order: i,
+          boardId: boardId,
+        })
+      )
+    );
     // Admin kullanıcıyı ekle
     await models.User.create({
       nickname: adminNickname,

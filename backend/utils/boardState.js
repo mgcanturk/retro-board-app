@@ -18,6 +18,7 @@ async function getFullBoardState(boardId) {
         attributes: ['nickname', 'isAdmin', 'joinedAt', 'socketId'],
       },
     ],
+    order: [[models.Column, 'order', 'ASC']],
   });
   if (!board) return null;
   const plain = board.get({ plain: true });

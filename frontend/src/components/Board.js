@@ -21,7 +21,7 @@ import {
   Edit3,
   X
 } from 'lucide-react';
-import { toast, ToastContainer, Slide } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Modal from './common/Modal';
 import FormInput from './common/FormInput';
@@ -45,14 +45,14 @@ const Board = () => {
   const [newComment, setNewComment] = useState('');
   const [selectedColumn, setSelectedColumn] = useState('');
   const [timerDuration, setTimerDuration] = useState(5);
-  const [timeLeft, setTimeLeft] = useState(null);
-  const [isTimerActive, setIsTimerActive] = useState(false);
-  const [showNames, setShowNames] = useState(false);
-  const [isLocked, setIsLocked] = useState(true);
-  const [participantCount, setParticipantCount] = useState(0);
-  const [error] = useState('');
+    const [timeLeft, setTimeLeft] = useState(null);
+   const [isTimerActive, setIsTimerActive] = useState(false);
+   const [showNames, setShowNames] = useState(false);
+   const [isLocked, setIsLocked] = useState(true);
+   const [participantCount, setParticipantCount] = useState(0);
+   const lockChangeReasonRef = useRef(null);
   
-  // Timer warning states
+   // Timer warning states
   const [warned30, setWarned30] = useState(false);
   const [warned10, setWarned10] = useState(false);
   const [showTimeWarning, setShowTimeWarning] = useState(false);
@@ -79,6 +79,9 @@ const Board = () => {
 
 
   useEffect(() => {
+    if (socketRef.current) {
+      return;
+    }
     if (!currentNickname || !inviteCode) {
       const savedUser = localStorage.getItem(`board_${boardId}_user`);
       if (savedUser) {
@@ -86,6 +89,7 @@ const Board = () => {
         setIsAdmin(userData.isAdmin || false);
         setCurrentNickname(userData.nickname);
         setShowJoinModal(false);
+        setJoinStatus('success');
         initializeSocket(userData.nickname, userData.isAdmin || false, userData.inviteCode || '');
         return;
       }
@@ -124,6 +128,7 @@ const Board = () => {
       setIsAdmin(location.state.isAdmin || false);
       setCurrentNickname(location.state.nickname);
       setShowJoinModal(false);
+      setJoinStatus('success');
       initializeSocket(location.state.nickname, location.state.isAdmin || false, inviteCode || '');
     } else {
       // Check localStorage for existing user session
@@ -133,6 +138,7 @@ const Board = () => {
         setIsAdmin(userData.isAdmin || false);
         setCurrentNickname(userData.nickname);
         setShowJoinModal(false);
+        setJoinStatus('success');
         initializeSocket(userData.nickname, userData.isAdmin || false, userData.inviteCode || '');
       } else {
         // Load board data to check if it exists
@@ -140,11 +146,6 @@ const Board = () => {
       }
     }
 
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-    };
   }, [currentNickname, inviteCode]);
 
   const loadBoardData = async () => {
@@ -183,12 +184,6 @@ const Board = () => {
       socketRef.current.disconnect();
     }
     socketRef.current = io(API_BASE_URL);
-    socketRef.current.emit('joinBoard', {
-      boardId,
-      nickname: userNickname,
-      isAdmin: userIsAdmin,
-      inviteCode: userInviteCode
-    });
     socketRef.current.on('boardState', (boardState) => {
       setBoard(boardState);
       setIsLocked(boardState.isLocked);
@@ -239,10 +234,20 @@ const Board = () => {
 
     socketRef.current.on('boardLocked', ({ isLocked }) => {
       setIsLocked(isLocked);
+      const reason = lockChangeReasonRef.current;
+      lockChangeReasonRef.current = null;
       if (isLocked) {
-        toast.info('Board kilitlendi.');
+        if (reason === 'timer-end' || reason === 'timer-stop') {
+          toast.info('Süre durduruldu. Board kilitlendi.');
+        } else {
+          toast.info('Board kilitlendi.');
+        }
       } else {
-        toast.info('Board kilidi açıldı.');
+        if (reason === 'timer-start') {
+          toast.info('Süre başlatıldı. Board kilidi açıldı.');
+        } else {
+          toast.info('Board kilidi açıldı.');
+        }
       }
     });
 
@@ -254,36 +259,36 @@ const Board = () => {
       setIsTimerActive(true);
       const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
       setTimeLeft(remaining);
-      setIsLocked(false);
+      // Timer başlatıldığında kilit otomatik açılacak; kilit event'i gelince birleşik mesaj basacağız
+      lockChangeReasonRef.current = 'timer-start';
       // Reset warning states
       setWarned30(false);
       setWarned10(false);
       setShowTimeWarning(false);
-      toast.info('Süre başladı!');
     });
 
     socketRef.current.on('timerEnded', () => {
       setIsTimerActive(false);
       setTimeLeft(null);
-      setIsLocked(true);
+      lockChangeReasonRef.current = 'timer-end';
       clearInterval(intervalRef.current);
       // Reset warning states
       setWarned30(false);
       setWarned10(false);
       setShowTimeWarning(false);
-      toast.info('Süre bitti, board kilitlendi.');
+      // Kilit mesajı 'boardLocked' event'i geldiğinde birleşik şekilde gösterilecek
     });
 
     socketRef.current.on('timerStopped', () => {
       setIsTimerActive(false);
       setTimeLeft(null);
-      setIsLocked(true);
+      lockChangeReasonRef.current = 'timer-stop';
       clearInterval(intervalRef.current);
       // Reset warning states
       setWarned30(false);
       setWarned10(false);
       setShowTimeWarning(false);
-      toast.info('Süre durduruldu, board kilitlendi.');
+      // Kilit mesajı 'boardLocked' event'i geldiğinde birleşik şekilde gösterilecek
     });
 
 
@@ -303,6 +308,20 @@ const Board = () => {
         navigate('/', { state: { joinError: err.message, boardId } });
       }
     });
+
+    const emitJoin = () => {
+      socketRef.current.emit('joinBoard', {
+        boardId,
+        nickname: userNickname,
+        isAdmin: userIsAdmin,
+        inviteCode: userInviteCode
+      });
+    };
+    if (socketRef.current.connected) {
+      emitJoin();
+    } else {
+      socketRef.current.once('connect', emitJoin);
+    }
 
     socketRef.current.on('boardEnded', () => {
       localStorage.removeItem(`board_${boardId}_user`);
@@ -693,22 +712,6 @@ const Board = () => {
     return null;
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Hata</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button
-            onClick={() => navigate('/')}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"
-          >
-            Ana Sayfaya Dön
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (!board) {
     return (
@@ -1292,7 +1295,6 @@ const Board = () => {
         </div>
       </Modal>
 
-      <ToastContainer position="bottom-right" autoClose={3000} transition={Slide} />
     </div>
   );
 };
