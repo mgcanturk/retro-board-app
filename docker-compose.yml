@@ -1,0 +1,34 @@
+version: '3.8'
+services:
+  retro-board-app:
+    build: .
+    ports:
+      - "5000:5000"
+    working_dir: /app/backend
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./backend/.env:/app/backend/.env:ro
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: retro_user
+      POSTGRES_PASSWORD: retro_pass
+      POSTGRES_DB: retro_board
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retro_user -d retro_board"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata: 
